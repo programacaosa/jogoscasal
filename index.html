@@ -95,6 +95,54 @@
   display: none; /* Ocultar o chat inicialmente */
   flex-direction: column;
 }
+/* Balão de mensagem enviado */
+.message.sent {
+  background-color: gray;
+  color: white;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  max-width: 80%;
+  align-self: flex-end; /* Faz a mensagem aparecer do lado direito */
+  position: relative;
+}
+
+/* Balão de mensagem recebida */
+.message.received {
+  background-color: #f1f1f1;
+  color: pink;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  max-width: 80%;
+  align-self: flex-start; /* Faz a mensagem aparecer do lado esquerdo */
+  position: relative;
+}
+
+/* Triângulo para o balão de mensagem */
+.message.sent::after, .message.received::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Triângulo para mensagem enviada (direita) */
+.message.sent::after {
+  right: -10px;
+  border-top-color: #4CAF50; /* Cor do balão enviado */
+}
+
+/* Triângulo para mensagem recebida (esquerda) */
+.message.received::after {
+  left: -10px;
+  border-top-color: #f1f1f1; /* Cor do balão recebido */
+}
 
 
     #chatMessages {
@@ -198,93 +246,105 @@
   </div>
 
   <script>
-    const ws = new WebSocket('wss://jogoscasal-24ud.onrender.com');
+  const ws = new WebSocket('ws://localhost:8080');
 
-ws.onopen = () => console.log('Conectado ao WebSocket');
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
+  ws.onopen = () => console.log('Conectado ao WebSocket');
 
-  if (data.action === 'revealCard') revealCard(data.cardId);
-  if (data.action === 'chatMessage') displayChatMessage(data.message);
-  if (data.action === 'typing') toggleTypingIndicator(data.isTyping);  // Novo
-};
+  // Unificando o evento de mensagens do WebSocket
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
 
-document.querySelectorAll('.card').forEach(card => {
-  card.addEventListener('click', () => {
-    const cardId = card.getAttribute('data-card');
-    ws.send(JSON.stringify({ action: 'chooseCard', cardId }));
-    revealCard(cardId);
+    // Tratar as ações do servidor
+    if (data.action === 'revealCard') revealCard(data.cardId);
+    if (data.action === 'chatMessage') displayChatMessage(data.message, false);  // Exibe a mensagem recebida
+    if (data.action === 'typing') toggleTypingIndicator(data.isTyping);  // Atualiza o indicador de digitação
+  };
+
+  // Evento de clique para as cartas (não modificado)
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => {
+      const cardId = card.getAttribute('data-card');
+      ws.send(JSON.stringify({ action: 'chooseCard', cardId }));
+      revealCard(cardId);
+    });
   });
-});
 
-function revealCard(cardId) {
-  const card = document.querySelector(`.card[data-card="${cardId}"]`);
-  card.innerHTML = `<img src="${cardId}" alt="Carta">`;
-  card.classList.add('revealed');
-}
-
-function displayChatMessage(message) {
-  const chatMessages = document.getElementById('chatMessages');
-  const messageElement = document.createElement('div');
-  messageElement.textContent = message;
-  chatMessages.appendChild(messageElement);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-  updateChatIcon();
-}
-
-document.getElementById('sendMessageBtn').addEventListener('click', () => {
-  const messageInput = document.getElementById('messageInput');
-  const message = messageInput.value;
-  if (message.trim()) {
-    ws.send(JSON.stringify({ action: 'chatMessage', message }));
-    displayChatMessage(`Você: ${message}`);
-    messageInput.value = '';
+  function revealCard(cardId) {
+    const card = document.querySelector(`.card[data-card="${cardId}"]`);
+    card.innerHTML = `<img src="${cardId}" alt="Carta">`;
+    card.classList.add('revealed');
   }
-});
 
-document.getElementById('chatIcon').addEventListener('click', () => {
-  const chat = document.getElementById('chat');
-  chat.style.display = chat.style.display === 'none' || chat.style.display === '' ? 'flex' : 'none';
-});
+  // Função para exibir as mensagens de chat
+  function displayChatMessage(message, isSentByUser = true) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageElement = document.createElement('div');
+    
+    // Adiciona a classe de acordo com quem enviou a mensagem
+    messageElement.classList.add('message');
+    messageElement.classList.add(isSentByUser ? 'sent' : 'received');  // Classe 'sent' para mensagens enviadas
 
-// Função para atualizar o ícone do chat
-function updateChatIcon() {
-  const notificationCount = document.getElementById('notificationCount');
-  const unreadMessages = document.getElementById('chatMessages').childNodes.length;
-  if (unreadMessages > 0) {
-    notificationCount.textContent = unreadMessages;
-    notificationCount.style.display = 'flex';
-  } else {
-    notificationCount.style.display = 'none';
+    messageElement.textContent = message;
+    chatMessages.appendChild(messageElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    updateChatIcon();
   }
-}
 
-// Detectar quando o usuário está digitando e enviar para o servidor
-let typingTimeout;
-document.getElementById('messageInput').addEventListener('input', () => {
-  ws.send(JSON.stringify({ action: 'typing', isTyping: true }));  // Envia "digitando"
-  
-  // Se não houver digitação por 2 segundos, envia "não digitando"
-  clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(() => {
-    ws.send(JSON.stringify({ action: 'typing', isTyping: false }));
-  }, 2000);
-});
+  // Evento de clique no botão de enviar mensagem
+  document.getElementById('sendMessageBtn').addEventListener('click', () => {
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value;
+    if (message.trim()) {
+      ws.send(JSON.stringify({ action: 'chatMessage', message }));
+      displayChatMessage(`Você: ${message}`, true); // Passa 'true' para mensagem do usuário
+      messageInput.value = '';
+    }
+  });
 
-// Função para mostrar/ocultar o indicador "digitando"
-const typingIndicator = document.createElement('div');
-typingIndicator.id = 'typingIndicator';
-typingIndicator.style.display = 'none';
-typingIndicator.style.marginTop = '10px';
-typingIndicator.style.fontStyle = 'italic';
-typingIndicator.textContent = 'O outro jogador está digitando...';
-document.getElementById('chat').appendChild(typingIndicator);
+  // Função para atualizar o ícone de chat com a quantidade de mensagens não lidas
+  function updateChatIcon() {
+    const notificationCount = document.getElementById('notificationCount');
+    const unreadMessages = document.getElementById('chatMessages').childNodes.length;
+    if (unreadMessages > 0) {
+      notificationCount.textContent = unreadMessages;
+      notificationCount.style.display = 'flex';
+    } else {
+      notificationCount.style.display = 'none';
+    }
+  }
 
-// Mostrar ou esconder o indicador de digitação
-function toggleTypingIndicator(isTyping) {
-  typingIndicator.style.display = isTyping ? 'block' : 'none';
-}
+  // Detecta quando o usuário está digitando e envia para o servidor
+  let typingTimeout;
+  document.getElementById('messageInput').addEventListener('input', () => {
+    ws.send(JSON.stringify({ action: 'typing', isTyping: true }));  // Envia "digitando"
+    
+    // Se não houver digitação por 2 segundos, envia "não digitando"
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      ws.send(JSON.stringify({ action: 'typing', isTyping: false }));
+    }, 2000);
+  });
 
-  </script>
+  // Criando o elemento de indicador "digitando"
+  const typingIndicator = document.createElement('div');
+  typingIndicator.id = 'typingIndicator';
+  typingIndicator.style.display = 'none';
+  typingIndicator.style.marginTop = '10px';
+  typingIndicator.style.fontStyle = 'italic';
+  typingIndicator.textContent = 'O outro jogador está digitando...';
+  document.getElementById('chat').appendChild(typingIndicator);
+
+  // Função para mostrar ou esconder o indicador de digitação
+  function toggleTypingIndicator(isTyping) {
+    typingIndicator.style.display = isTyping ? 'block' : 'none';
+  }
+
+  // Função para abrir/fechar o chat (não modificada)
+  document.getElementById('chatIcon').addEventListener('click', () => {
+    const chat = document.getElementById('chat');
+    chat.style.display = chat.style.display === 'none' || chat.style.display === '' ? 'flex' : 'none';
+  });
+
+</script>
 </body>
 </html>
