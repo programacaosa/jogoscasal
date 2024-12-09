@@ -193,9 +193,12 @@
   </div>
 
   <script>
-    const ws = new WebSocket('wss://jogoscasal.onrender.com');
+   const ws = new WebSocket('wss://jogoscasal.onrender.com');
 
-ws.onopen = () => console.log('Conectado ao WebSocket');
+ws.onopen = () => {
+  console.log('Conectado ao WebSocket');
+};
+
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
 
@@ -207,7 +210,7 @@ ws.onmessage = (event) => {
 document.querySelectorAll('.card').forEach(card => {
   card.addEventListener('click', () => {
     const cardId = card.getAttribute('data-card');
-    ws.send(JSON.stringify({ action: 'chooseCard', cardId }));
+    sendMessage({ action: 'chooseCard', cardId });
     revealCard(cardId);
   });
 });
@@ -231,7 +234,7 @@ document.getElementById('sendMessageBtn').addEventListener('click', () => {
   const messageInput = document.getElementById('messageInput');
   const message = messageInput.value;
   if (message.trim()) {
-    ws.send(JSON.stringify({ action: 'chatMessage', message }));
+    sendMessage({ action: 'chatMessage', message });
     displayChatMessage(`Você: ${message}`);
     messageInput.value = '';
   }
@@ -241,6 +244,15 @@ document.getElementById('chatIcon').addEventListener('click', () => {
   const chat = document.getElementById('chat');
   chat.style.display = chat.style.display === 'none' || chat.style.display === '' ? 'flex' : 'none';
 });
+
+// Função para enviar mensagem apenas se o WebSocket estiver aberto
+function sendMessage(data) {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
+  } else {
+    console.log('WebSocket ainda não está aberto. Tente novamente mais tarde.');
+  }
+}
 
 // Função para atualizar o ícone do chat
 function updateChatIcon() {
@@ -257,12 +269,12 @@ function updateChatIcon() {
 // Detectar quando o usuário está digitando e enviar para o servidor
 let typingTimeout;
 document.getElementById('messageInput').addEventListener('input', () => {
-  ws.send(JSON.stringify({ action: 'typing', isTyping: true }));  // Envia "digitando"
+  sendMessage({ action: 'typing', isTyping: true });
   
   // Se não houver digitação por 2 segundos, envia "não digitando"
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => {
-    ws.send(JSON.stringify({ action: 'typing', isTyping: false }));
+    sendMessage({ action: 'typing', isTyping: false });
   }, 2000);
 });
 
