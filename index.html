@@ -1,297 +1,332 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jogo de Cartas</title>
-  <style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat WebSocket</title>
+   <style>
     body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background-color: #f0f0f0;
-	  background-image: url('https://preview.redd.it/y7rpg11h8svb1.jpg?auto=webp&s=d0487fae4d086e91de0a2ec9b0f08819065c342d'); /* Substitua pelo caminho da imagem */
-      flex-direction: column;
-      position: relative;
-      margin: 0;
+        font-family: Arial, sans-serif;
     }
 
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
+    #userSection {
+        display: block;
     }
 
-    #cards {
-  display: grid; /* Já está usando grid */
-  gap: 10px; /* Espaço entre as cartas */
-  justify-content: center; /* Centraliza horizontalmente */
-  align-content: center; /* Centraliza verticalmente dentro do contêiner */
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Tamanho flexível das colunas */
-}
-
-
-    /* Configuração para desktop */
-    @media (min-width: 769px) {
-      #cards {
-        grid-template-columns: repeat(3, 1fr); /* 3 colunas em telas maiores */
-      }
+    #chatSection {
+        display: none;
     }
 
-    /* Configuração para celular */
-    @media (max-width: 768px) {
-      #cards {
-        grid-template-columns: repeat(2, 1fr); /* 2 colunas em telas pequenas */
-      }
+    .user {
+        cursor: pointer;
+        padding: 5px;
+        margin: 5px;
+        background-color: #f0f0f0;
+        border-radius: 5px;
     }
 
-    .card {
-      width: 100%;
-      aspect-ratio: 2/3; /* Mantém proporção da carta */
-      background-color: #4CAF50;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      border-radius: 5px;
-      font-size: 18px;
-      text-align: center;
+    .user:hover {
+        background-color: #ddd;
     }
 
-    .revealed {
-      background-color: #ff5722;
+    .online {
+        color: green;
     }
 
-    .card img {
-      width: 100%;
-      height: 100%;
-      border-radius: 5px;
-      object-fit: cover;
+    .offline {
+        color: gray;
     }
 
-    #message {
-      margin-top: 20px;
-      font-size: 20px;
-      font-weight: bold;
+    .chatBox {
+        display: none;
+        margin-top: 20px;
     }
 
-    /* Estilo do chat */
-    #chat {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 300px;
-      height: 400px;
-      background-color: #fff;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      display: none; /* Ocultar o chat inicialmente */
-      flex-direction: column;
+    .read-icon {
+        font-size: 12px;
+        margin-left: 5px;
+        font-weight: bold;
+        color: #007bff; /* Cor do visto */
     }
 
-    #chatMessages {
-      flex-grow: 1;
-      padding: 10px;
-      overflow-y: auto;
-      font-size: 14px;
-      border-bottom: 1px solid #ccc;
+    #messages {
+        margin-bottom: 10px;
+        max-height: 300px;
+        overflow-y: scroll;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
     }
 
-    #chatInput {
-      display: flex;
+    #messageInput {
+        width: 80%;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        box-sizing: border-box;
     }
 
-    #chatInput input {
-  width: 50%; /* Define a largura como 70% do container */
-  padding: 10px;
-  border: none;
-  border-top: 1px solid #ccc;
-  font-size: 14px;
-}
-
-
-    #chatInput button {
-      padding: 10px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
+    #sendMessageBtn {
+        padding: 10px 15px;
+        cursor: pointer;
+        background-color: #D85E00;
+        color: black;
+        border: none;
+        border-radius: 5px;
+        margin-top: 10px;
     }
 
-    /* Ícone do chat */
-    #chatIcon {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 50px;
-      height: 50px;
-      background-color: #4CAF50;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border-radius: 50%;
-      font-size: 20px;
-      cursor: pointer;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    /* Balões de mensagens */
+    .sent, .received {
+        display: inline-block;
+        padding: 10px;
+        max-width: 70%;
+        border-radius: 15px;
+        margin: 5px;
+        word-wrap: break-word;
+        position: relative;
+        clear: both;
     }
 
-    #chatIcon .notification {
-      position: absolute;
-      top: -5px;
-      right: -5px;
-      width: 20px;
-      height: 20px;
-      background-color: red;
-      color: white;
-      font-size: 12px;
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    /* Balão de mensagem enviada (alinhado à direita) */
+    .sent {
+        background-color: #007bff;
+        color: white;
+        align-self: flex-end; /* Envia para o lado direito */
+        border-bottom-right-radius: 0;
+        margin-left: auto;
     }
-	@media (max-width: 768px) {
-  .card {
-    width: 140px; /* Largura reduzida para telas menores */
-    height: 180px; /* Altura reduzida */
-    font-size: 12px; /* Ajuste do tamanho do texto */
-  }
-}
 
-  </style>
+    /* Balão de mensagem recebida (alinhado à esquerda) */
+    .received {
+        background-color: #e0e0e0;
+        color: black;
+        align-self: flex-start; /* Envia para o lado esquerdo */
+        border-bottom-left-radius: 0;
+    }
+
+    /* Hora da mensagem */
+    .message-time {
+        font-size: 12px;
+        color: #888;
+        margin-left: 5px;
+    }
+
+    /* Exibe o ícone de visto ao lado da mensagem recebida */
+    .received .read-icon {
+        font-size: 14px;
+        color: green;
+        position: absolute;
+        right: 10px;
+        bottom: 5px;
+    }
+
+    /* Responsividade para telas pequenas */
+    @media (max-width: 600px) {
+        #chatSection {
+            width: 100%;
+            padding: 15px;
+        }
+
+        #messages {
+            max-height: 350px;
+        }
+
+        .sent, .received {
+            font-size: 14px;
+        }
+
+        #sendMessageBtn {
+            font-size: 16px;
+            padding: 12px 15px;
+        }
+    }
+</style>
+
 </head>
 <body>
-  <h1>Jogo de Cartas</h1>
-  <div id="cards">
-    <!-- Cartas -->
-    <div class="card" data-card="carta1.png">Carta 1</div>
-    <div class="card" data-card="carta2.png">Carta 2</div>
-    <div class="card" data-card="carta3.png">Carta 3</div>
-    <div class="card" data-card="carta4.png">Carta 4</div>
-    <div class="card" data-card="carta5.png">Carta 5</div>
-    <div class="card" data-card="carta6.png">Carta 6</div>
-  </div>
-
-  <div id="message"></div>
-
-  <!-- Chat -->
-  <div id="chat">
-    <div id="chatMessages"></div>
-    <div id="chatInput">
-      <input type="text" id="messageInput" placeholder="Digite sua mensagem...">
-      <button id="sendMessageBtn">Enviar</button>
+    <h1>Chat WebSocket</h1>
+    <div id="userSection">
+        <input type="text" id="username" placeholder="Digite seu nome" />
+        <button id="registerBtn">Registrar</button>
     </div>
-  </div>
 
-  <!-- Ícone do chat -->
-  <div id="chatIcon">
-    💬
-    <div class="notification" id="notificationCount" style="display: none;">1</div>
-  </div>
+    <div id="chatSection">
+        <h3>Usuários Conectados</h3>
+        <div id="userList"></div>
 
-  <script>
-   const ws = new WebSocket('wss://jogoscasal.onrender.com');
+        <div id="chatBox" class="chatBox">
+            <h3>Conversando com <span id="chatWith"></span></h3>
+            <div id="messages"></div>
+            <input type="text" id="messageInput" placeholder="Digite uma mensagem..." />
+            <button id="sendMessageBtn">Enviar</button>
+            <button id="clearChatBtn">Limpar Conversa</button> <!-- Botão para limpar conversa -->
+        </div>
+    </div>
 
-ws.onopen = () => {
-  console.log('Conectado ao WebSocket');
+    <script>
+    const ws = new WebSocket('wss://chat-2xo1.onrender.com');
+let username = '';
+let targetUser = null;
+
+// Verificar se o nome do usuário já está salvo no localStorage
+if (localStorage.getItem('username')) {
+    username = localStorage.getItem('username');
+    autoLogin(username);
+}
+
+// Registrar o usuário
+document.getElementById('registerBtn').onclick = () => {
+    username = document.getElementById('username').value;
+    if (username) {
+        localStorage.setItem('username', username); // Salvar nome no localStorage
+        ws.send(JSON.stringify({ type: 'register', username }));
+        document.getElementById('userSection').style.display = 'none';
+        document.getElementById('chatSection').style.display = 'block';
+    }
 };
 
+// Login automático caso o nome esteja salvo
+function autoLogin(savedUsername) {
+    username = savedUsername;
+    ws.onopen = () => {
+        ws.send(JSON.stringify({ type: 'register', username }));
+        document.getElementById('username').value = username; // Mostrar o nome no input
+        document.getElementById('userSection').style.display = 'none';
+        document.getElementById('chatSection').style.display = 'block';
+    };
+}
+
+// Salvar mensagem no localStorage
+function saveMessageToLocalStorage(sender, recipient, message, isReceived) {
+    const chatKey = `${sender}-${recipient}`;
+    const reverseChatKey = `${recipient}-${sender}`;
+
+    let chatHistory = JSON.parse(localStorage.getItem(chatKey)) || [];
+    const timestamp = new Date().toISOString();
+
+    const messageObject = {
+        sender,
+        message,
+        timestamp,
+        read: isReceived ? false : true
+    };
+
+    chatHistory.push(messageObject);
+    localStorage.setItem(chatKey, JSON.stringify(chatHistory));
+
+    let reverseChatHistory = JSON.parse(localStorage.getItem(reverseChatKey)) || [];
+    reverseChatHistory.push({ sender, message, timestamp, read: true });
+    localStorage.setItem(reverseChatKey, JSON.stringify(reverseChatHistory));
+}
+
+// Carregar mensagens do localStorage
+function loadMessagesFromLocalStorage(user1, user2) {
+    const chatKey = `${user1}-${user2}`;
+    const reverseChatKey = `${user2}-${user1}`;
+
+    const chatHistory = JSON.parse(localStorage.getItem(chatKey)) || JSON.parse(localStorage.getItem(reverseChatKey)) || [];
+
+    chatHistory.forEach(chat => {
+        appendMessage(chat.sender, chat.message, chat.sender === username, chat.timestamp, chat.read);
+    });
+
+    markMessagesAsRead(user1, user2);
+}
+
+// Marcar as mensagens como lidas
+function markMessagesAsRead(user1, user2) {
+    const chatKey = `${user1}-${user2}`;
+    const reverseChatKey = `${user2}-${user1}`;
+
+    let chatHistory = JSON.parse(localStorage.getItem(chatKey)) || [];
+    chatHistory.forEach(message => {
+        message.read = true;
+    });
+    localStorage.setItem(chatKey, JSON.stringify(chatHistory));
+
+    let reverseChatHistory = JSON.parse(localStorage.getItem(reverseChatKey)) || [];
+    reverseChatHistory.forEach(message => {
+        message.read = true;
+    });
+    localStorage.setItem(reverseChatKey, JSON.stringify(reverseChatHistory));
+}
+
+// Enviar mensagem
+document.getElementById('sendMessageBtn').onclick = () => {
+    const message = document.getElementById('messageInput').value;
+    if (message && targetUser) {
+        ws.send(JSON.stringify({ type: 'private_message', target: targetUser, message }));
+        saveMessageToLocalStorage(username, targetUser, message, false);
+        appendMessage('Você', message, true, new Date().toISOString(), true);
+        document.getElementById('messageInput').value = '';
+    }
+};
+
+// Quando uma mensagem for recebida do WebSocket
 ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
+    const data = JSON.parse(event.data);
 
-  if (data.action === 'revealCard') revealCard(data.cardId);
-  if (data.action === 'chatMessage') displayChatMessage(data.message);
-  if (data.action === 'typing') toggleTypingIndicator(data.isTyping);  // Novo
+    if (data.type === 'user_list') {
+        const userList = document.getElementById('userList');
+        userList.innerHTML = '';
+        data.users.forEach(user => {
+            const div = document.createElement('div');
+            div.classList.add('user');
+            div.innerHTML = `${user.username} ${user.status}`;
+            div.onclick = () => startChat(user.username);
+            userList.appendChild(div);
+        });
+    }
+
+    if (data.type === 'private_message') {
+        if (data.from === targetUser) {
+            saveMessageToLocalStorage(data.from, username, data.message, true);
+            appendMessage(data.from, data.message, false, new Date().toISOString(), false);
+        } else {
+            alert(`Nova mensagem de ${data.from}`);
+        }
+    }
 };
 
-document.querySelectorAll('.card').forEach(card => {
-  card.addEventListener('click', () => {
-    const cardId = card.getAttribute('data-card');
-    sendMessage({ action: 'chooseCard', cardId });
-    revealCard(cardId);
-  });
-});
+// Iniciar a conversa com um usuário
+function startChat(user) {
+    targetUser = user;
+    document.getElementById('chatWith').textContent = user;
+    document.getElementById('chatBox').style.display = 'block';
 
-function revealCard(cardId) {
-  const card = document.querySelector(`.card[data-card="${cardId}"]`);
-  card.innerHTML = `<img src="${cardId}" alt="Carta">`;
-  card.classList.add('revealed');
+    document.getElementById('messages').innerHTML = '';
+    loadMessagesFromLocalStorage(username, user);
 }
 
-function displayChatMessage(message) {
-  const chatMessages = document.getElementById('chatMessages');
-  const messageElement = document.createElement('div');
-  messageElement.textContent = message;
-  chatMessages.appendChild(messageElement);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-  updateChatIcon();
+// Função para adicionar uma mensagem à área de conversa
+function appendMessage(sender, message, isSent, timestamp, readStatus) {
+    const messagesDiv = document.getElementById('messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add(isSent ? 'sent' : 'received');
+    
+    const time = new Date(timestamp).toLocaleTimeString();
+    const readIcon = readStatus
+        ? '<span class="read-icon" style="color: green;">✓</span>'
+        : '<span class="read-icon" style="color: gray;">✓</span>';
+
+    messageDiv.innerHTML = `${sender} (${time}) ${readIcon}: ${message}`;
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-document.getElementById('sendMessageBtn').addEventListener('click', () => {
-  const messageInput = document.getElementById('messageInput');
-  const message = messageInput.value;
-  if (message.trim()) {
-    sendMessage({ action: 'chatMessage', message });
-    displayChatMessage(`Você: ${message}`);
-    messageInput.value = '';
-  }
-});
+// Limpar conversa do usuário selecionado
+document.getElementById('clearChatBtn').onclick = () => {
+    if (targetUser) {
+        const chatKey = `${username}-${targetUser}`;
+        const reverseChatKey = `${targetUser}-${username}`;
+        localStorage.removeItem(chatKey);
+        localStorage.removeItem(reverseChatKey);
 
-document.getElementById('chatIcon').addEventListener('click', () => {
-  const chat = document.getElementById('chat');
-  chat.style.display = chat.style.display === 'none' || chat.style.display === '' ? 'flex' : 'none';
-});
+        document.getElementById('messages').innerHTML = ''; // Limpar as mensagens exibidas
+    }
+};
+</script>
 
-// Função para enviar mensagem apenas se o WebSocket estiver aberto
-function sendMessage(data) {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(data));
-  } else {
-    console.log('WebSocket ainda não está aberto. Tente novamente mais tarde.');
-  }
-}
-
-// Função para atualizar o ícone do chat
-function updateChatIcon() {
-  const notificationCount = document.getElementById('notificationCount');
-  const unreadMessages = document.getElementById('chatMessages').childNodes.length;
-  if (unreadMessages > 0) {
-    notificationCount.textContent = unreadMessages;
-    notificationCount.style.display = 'flex';
-  } else {
-    notificationCount.style.display = 'none';
-  }
-}
-
-// Detectar quando o usuário está digitando e enviar para o servidor
-let typingTimeout;
-document.getElementById('messageInput').addEventListener('input', () => {
-  sendMessage({ action: 'typing', isTyping: true });
-  
-  // Se não houver digitação por 2 segundos, envia "não digitando"
-  clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(() => {
-    sendMessage({ action: 'typing', isTyping: false });
-  }, 2000);
-});
-
-// Função para mostrar/ocultar o indicador "digitando"
-const typingIndicator = document.createElement('div');
-typingIndicator.id = 'typingIndicator';
-typingIndicator.style.display = 'none';
-typingIndicator.style.marginTop = '10px';
-typingIndicator.style.fontStyle = 'italic';
-typingIndicator.textContent = 'O outro jogador está digitando...';
-document.getElementById('chat').appendChild(typingIndicator);
-
-// Mostrar ou esconder o indicador de digitação
-function toggleTypingIndicator(isTyping) {
-  typingIndicator.style.display = isTyping ? 'block' : 'none';
-}
-
-  </script>
 </body>
 </html>
